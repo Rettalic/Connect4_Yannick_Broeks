@@ -3,19 +3,12 @@ using UnityEngine;
 
 public class Field
 {
-    private enum Piece
-    {
-        Empty = 0,
-        Blue = 1,
-        Red = 2,
-    }
-
     private int numberRows;
     private int numberColumns;
     private int numberPiecesToWin;
     private bool allowDiagonalConnection = true;
 
-    protected int[,] field;
+    private PieceType[,] field;
 
     private bool isPlayersTurn;
     public bool IsPlayersTurn => isPlayersTurn; 
@@ -27,21 +20,21 @@ public class Field
     private int dropColumn;
     private int dropRow;
 
-    public Field(int numRows, int numColumns, int numPiecesToWin, bool allowDiagonally)
+    public Field(int _numRows, int _numColumns, int _numPiecesToWin, bool _allowDiagonally)
     {
-        this.numberRows = numRows;
-        this.numberColumns = numColumns;
-        this.numberPiecesToWin = numPiecesToWin;
-        this.allowDiagonalConnection = allowDiagonally;
+        numberRows = _numRows;
+        numberColumns = _numColumns;
+        numberPiecesToWin = _numPiecesToWin;
+        allowDiagonalConnection = _allowDiagonally;
 
-        isPlayersTurn = System.Convert.ToBoolean(Random.Range(0, 2));
+        isPlayersTurn = Random.value > 0.5f;
 
-        field = new int[numColumns, numRows];
-        for (int x = 0; x < numColumns; x++)
+        field = new PieceType[_numColumns, _numRows];
+        for (int x = 0; x < _numColumns; x++)
         {
-            for (int y = 0; y < numRows; y++)
+            for (int y = 0; y < _numRows; y++)
             {
-                field[x, y] = (int)Piece.Empty;
+                field[x, y] = PieceType.Empty;
             }
         }
 
@@ -49,21 +42,21 @@ public class Field
         dropRow = 0;
     }
 
-    public Field(int numRows, int numColumns, int numPiecesToWin, bool allowDiagonally, bool isPlayersTurn, int piecesNumber, int[,] field)
+    public Field(int _numRows, int _numColumns, int _numPiecesToWin, bool _allowDiagonally, bool _isPlayersTurn, int _piecesNumber, PieceType[,] _field)
     {
-        this.numberRows = numRows;
-        this.numberColumns = numColumns;
-        this.numberPiecesToWin = numPiecesToWin;
-        this.allowDiagonalConnection = allowDiagonally;
-        this.isPlayersTurn = isPlayersTurn;
-        this.piecesNumber = piecesNumber;
+        numberRows = _numRows;
+        numberColumns = _numColumns;
+        numberPiecesToWin = _numPiecesToWin;
+        allowDiagonalConnection = _allowDiagonally;
+        isPlayersTurn = _isPlayersTurn;
+        piecesNumber = _piecesNumber;
 
-        this.field = new int[numColumns, numRows];
-        for (int x = 0; x < numColumns; x++)
+        field = new PieceType[_numColumns, _numRows];
+        for (int x = 0; x < _numColumns; x++)
         {
-            for (int y = 0; y < numRows; y++)
+            for (int y = 0; y < _numRows; y++)
             {
-                this.field[x, y] = field[x, y];
+                field[x, y] = _field[x, y];
             }
         }
     }
@@ -76,7 +69,7 @@ public class Field
         {
             for (int y = numberRows - 1; y >= 0; y--)
             {
-                if (field[x, y] == (int)Piece.Empty)
+                if (field[x, y] == PieceType.Empty)
                 {
                     possibleCells.Add(x, y);
                     break;
@@ -94,7 +87,7 @@ public class Field
         {
             for (int y = numberRows - 1; y >= 0; y--)
             {
-                if (field[x, y] == (int)Piece.Empty)
+                if (field[x, y] == PieceType.Empty)
                 {
                     possibleDrops.Add(x);
                     break;
@@ -125,9 +118,9 @@ public class Field
 
         for (int i = numberRows - 1; i >= 0; i--)
         {
-            if (field[col, i] == 0)
+            if (field[col, i] == PieceType.Empty)
             {
-                field[col, i] = isPlayersTurn ? (int)Piece.Blue : (int)Piece.Red;
+                field[col, i] = isPlayersTurn ? PieceType.Yellow : PieceType.Red;
                 piecesNumber += 1;
                 dropColumn = col;
                 dropRow = i;
@@ -140,7 +133,7 @@ public class Field
     {
         for (int i = 0; i < numberRows; i++)
         {
-            if (field[col, i] == 0)
+            if (field[col, i] == PieceType.Empty)
             {
                 return false; 
             }
@@ -163,7 +156,7 @@ public class Field
                 int layermask = isPlayersTurn ? (1 << 8) : (1 << 9);
 
                 // If it's the Players turn ignore red as Starting piece and vise versa.
-                if (field[x, y] != (isPlayersTurn ? (int)Piece.Blue : (int)Piece.Red))
+                if (field[x, y] != (isPlayersTurn ? PieceType.Yellow : PieceType.Red))
                 {
                     continue;
                 }
@@ -227,8 +220,8 @@ public class Field
 
     public bool CheckForVictory()
     {
-        int colour = field[dropColumn, dropRow];
-        if (colour == 0)
+        PieceType colour = field[dropColumn, dropRow];
+        if (colour == PieceType.Empty)
             return false;
 
         bool bottomDirection = true;

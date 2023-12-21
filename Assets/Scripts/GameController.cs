@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using UnityEngine;
-using TMPro;
 
 public class GameController : MonoBehaviour
 {
@@ -17,23 +18,26 @@ public class GameController : MonoBehaviour
     [SerializeField] private bool allowDiagonalConnection = true;
 
     [Header("AI Interactions")]
-    [Range(1, 8)] public int parallelProcesses = 2;
-    [Range(7, 5000)] public int MCTS_Iterations = 100; //20 is easy, 40 is medium, 80 is hard, above 100 is challenging (I haven't won from 1000).
+    [Range(1, 8)]
+    [SerializeField] private int parallelProcesses = 2;
+    [Range(7, 5000)]
+    [Tooltip("20 is easy, 40 is medium, 80 is hard, above 100 is challenging (I haven't won from 500).")]
+    [SerializeField] private int MCTS_Iterations = 100; 
     [Tooltip("Shows column number next to its probability.")]
-    [SerializeField] private bool log_column = false;
+    [SerializeField] private bool logColumn = false;
 
     [Header("Visuals")]
     [Range(1, 8)]
     [SerializeField] private float dropTime = 4f;
 
-    [Header("GameObjects")]
-    [SerializeField] private GameObject pieceRed;
-    [SerializeField] private GameObject pieceField;
-    [SerializeField] private GameObject pieceBlue;
+    [Header("Game Pieces")]
+    [SerializeField] private Piece pieceRed;
+    [SerializeField] private Piece pieceField;
+    [SerializeField] private Piece pieceYellow;
 
     //Game reference
     private GameObject gameObjectField; //this is the field object that gets created.
-    private GameObject gameObjectTurn;  //represent player/AI 
+    private Piece pieceTurn;  //represent player/AI 
 
     private Field field;
 
@@ -49,27 +53,27 @@ public class GameController : MonoBehaviour
 
     private void Update()
     {
+        if (gameOver) 
+            return;
+
+        if (pieceTurn == null)
+        {
+            pieceTurn = SpawnPiece();
+            return;
+        }
+
         if (field.IsPlayersTurn)
         {
-            if (gameObjectTurn == null)
-            {
-                gameObjectTurn = SpawnPiece();
-            }
-            else
-            {
-                UpdatePiecePosition();
+            UpdatePlayerPiecePosition();
 
-                if (Input.GetKeyUp(KeyCode.Mouse0) && !isDropping)
-                    StartCoroutine(DropPiece(gameObjectTurn));
-            }
+            if (Input.GetKeyUp(KeyCode.Mouse0) && !isDropping)
+                StartCoroutine(DropPiece(pieceTurn));
+
+            return;
         }
-        else
-        {
-            if (gameObjectTurn == null)
-                gameObjectTurn = SpawnPiece();
-            else if (!isDropping) 
-                StartCoroutine(DropPiece(gameObjectTurn));
-        }
+
+        if (!isDropping) 
+            StartCoroutine(DropPiece(pieceTurn));
     }
 
     private void InitializeGame()
@@ -85,31 +89,29 @@ public class GameController : MonoBehaviour
         gameObjectField = new GameObject("Field");
         field = new Field(numberRows, numberColumns, numPiecesToWin, allowDiagonalConnection);
 
-        InstantiateCells();
+        //Instantiate empty pieces on field.
+        for (int x = 0; x < numberColumns; x++)
+        for (int y = 0; y < numberRows; y++)
+        {
+            Piece piece = Instantiate(pieceField, new Vector3(x, y * -1, -1), Quaternion.identity, gameObjectField.transform);
+        }
 
         gameOver = false;
     }
 
-    private void InstantiateCells()
-    {
-        for (int x = 0; x < numberColumns; x++)
-        for (int y = 0; y < numberRows; y++)
-        {
-            GameObject cell = Instantiate(pieceField, new Vector3(x, y * -1, -1), Quaternion.identity);
-            cell.transform.parent = gameObjectField.transform;
-        }
-    }
-
-    private GameObject SpawnPiece()
+    private Piece SpawnPiece()
     {
         Vector3 spawnPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (!field.IsPlayersTurn) 
             spawnPos.x = CalculateRow();
 
-        GameObject piece = Instantiate(
-            field.IsPlayersTurn ? pieceBlue : pieceRed,
-            new Vector3(Mathf.Clamp(spawnPos.x, 0, numberColumns - 1), gameObjectField.transform.position.y + 1, 0),
+        Piece piece = Instantiate(
+            field.IsPlayersTurn ? pieceYellow : pieceRed,
+            new Vector3(
+                Mathf.Clamp(spawnPos.x, 0, numberColumns - 1), 
+                gameObjectField.transform.position.y + 1,
+                0),
             Quaternion.identity);
 
         return piece;
@@ -134,20 +136,15 @@ public class GameController : MonoBehaviour
             WaitHandle.WaitAll(doneEvents);
 
             Node rootNode = new Node();
-            string log = "";
 
             for (int i = 0; i < parallelProcesses; i++)
             {
-                log += "( ";
-                var sortedChildren = trees[i].rootNode.children.ToList();
+                List<KeyValuePair<Node, int>> sortedChildren = trees[i].rootNode.children.ToList();
                 sortedChildren.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
 
                 for (int c = 0; c < sortedChildren.Count; c++)
                 {
-                    System.Collections.Generic.KeyValuePair<Node, int> child = sortedChildren[c];
-                    if (log_column)
-                        log += child.Value + ": ";
-                    log += (int)(((double)child.Key.wins / (double)child.Key.plays) * 100) + "% | ";
+                    KeyValuePair<Node, int> child = sortedChildren[c];
 
                     if (!rootNode.children.ContainsValue(child.Value))
                     {
@@ -163,24 +160,8 @@ public class GameController : MonoBehaviour
                         rootChild.plays += child.Key.plays;
                     }
                 }
-
-                log = log.Remove(log.Length - 3, 3);
-                log += " )\n";
             }
 
-#if UNITY_EDITOR
-            string log2 = "( ";
-            foreach (var child in rootNode.children)
-            {
-                if (log_column) log2 += child.Value + ": ";
-                log2 += (int)(((double)child.Key.wins / (double)child.Key.plays) * 100) + "% | ";
-            }
-            log2 = log2.Remove(log2.Length - 3, 3);
-            log2 += " )\n";
-            log2 += "*********************************************\n";
-            Debug.Log(log);
-            Debug.Log(log2);
-#endif
             column = rootNode.MostSelectedMove();
         }
         else
@@ -199,7 +180,8 @@ public class GameController : MonoBehaviour
 
         Node selectedNode;
         Node expandedNode;
-        System.Random random = new(System.Guid.NewGuid().GetHashCode());
+
+        System.Random random = new(Guid.NewGuid().GetHashCode());
 
         for (int i = 0; i < tree.iterationCount; i++)
         {
@@ -209,23 +191,25 @@ public class GameController : MonoBehaviour
             expandedNode = selectedNode.Expand(tree.simulatedStateField, random);
             expandedNode.BackPropagate(expandedNode.Simulate(tree.simulatedStateField));
         }
+
         tree.doneEvent.Set();
     }
 
-    private void UpdatePiecePosition()
+    private void UpdatePlayerPiecePosition()
     {
         Vector3 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        gameObjectTurn.transform.position = new Vector3(
+        pieceTurn.transform.position = new Vector3(
             Mathf.Clamp(pos.x, 0, numberColumns - 1),
-            gameObjectField.transform.position.y + 1, 0
+            gameObjectField.transform.position.y + 1,
+            0
         );
     }
 
-    private IEnumerator DropPiece(GameObject gObject)
+    private IEnumerator DropPiece(Piece _piece)
     {
         isDropping = true;
 
-        Vector3 startPosition = gObject.transform.position;
+        Vector3 startPosition = _piece.transform.position;
 
         int x = Mathf.RoundToInt(startPosition.x);
         startPosition = new Vector3(x, startPosition.y, startPosition.z);
@@ -236,8 +220,8 @@ public class GameController : MonoBehaviour
         {
             Vector3 endPosition = new (x, y * -1, startPosition.z);
 
-            GameObject piece = Instantiate(gObject) as GameObject;
-            gameObjectTurn.GetComponent<Renderer>().enabled = false;
+            Piece piece = Instantiate(_piece);
+            pieceTurn.SetRendererActive(false);
 
             float distance = Vector3.Distance(startPosition, endPosition);
 
@@ -246,18 +230,19 @@ public class GameController : MonoBehaviour
             {
                 time += Time.deltaTime * dropTime * ((numberRows - distance) + 1);
                 piece.transform.position = Vector3.Lerp(startPosition, endPosition, time);
+
                 yield return null;
             }
 
             piece.transform.parent = gameObjectField.transform;
-            Destroy(gameObjectTurn);
+            Destroy(pieceTurn);
 
             CheckGameState();
 
             field.SwitchPlayer();
         }
+
         isDropping = false;
-        yield return 0;
     }
 
     private void CheckGameState()
@@ -267,14 +252,14 @@ public class GameController : MonoBehaviour
         if (gameOver)
         {
             OnGameOver?.Invoke(field.IsPlayersTurn ? GameOverState.win : GameOverState.lose);
+
+            return;
         }
-        else
+        
+        if (!field.ContainsEmptyCell())
         {
-            if (!field.ContainsEmptyCell())
-            {
-                gameOver = true;
-                OnGameOver?.Invoke(GameOverState.draw);
-            }
+            gameOver = true;
+            OnGameOver?.Invoke(GameOverState.draw);
         }
     }
 }

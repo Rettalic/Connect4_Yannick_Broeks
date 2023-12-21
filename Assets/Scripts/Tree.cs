@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class Node
 {
@@ -16,7 +15,7 @@ public class Node
     {
         wins  = 0;
         plays = 0;
-        this.isPlayersTurn = _isPlayerTurn;
+        isPlayersTurn = _isPlayerTurn;
         children = new Dictionary<Node, int>();
         parent = _parentNode;
     }
@@ -31,7 +30,7 @@ public class Node
         return children[_node];
     }
 
-    public int getChildrenNumber()
+    public int GetChildCount()
     {
         return children.Count;
     }
@@ -40,9 +39,7 @@ public class Node
     {
         //Check for end game.
         if (!_simulatedField.ContainsEmptyCell() || _simulatedField.CheckForVictory())
-        {
             return this;
-        }
 
         // Check if not all plays have been tried.
         if (children.Keys.Count != _simulatedField.GetPossibleDrops().Count)
@@ -51,6 +48,7 @@ public class Node
         Node bestNode = SelectBestChild(_nbSimulation);
         _simulatedField.DropInColumn(children[bestNode]);
         _simulatedField.SwitchPlayer();
+
         return bestNode.SelectNodeToExpand(_nbSimulation, _simulatedField);
     }
 
@@ -71,11 +69,13 @@ public class Node
         }
 
         // Get line to play on.
-        int colToPlay = drops[_random.Next(0, drops.Count)];
+        int colToPlay = drops[_random.Next(drops.Count)];
         Node node = new Node(_simulatedField.IsPlayersTurn, this);
         AddChild(node, colToPlay); // Adds the child to the tree
+
         _simulatedField.DropInColumn(colToPlay);
         _simulatedField.SwitchPlayer();
+
         return node;
     }
 
@@ -83,6 +83,7 @@ public class Node
     {
         if (_simulatedField.CheckForVictory())
             return !_simulatedField.IsPlayersTurn;
+
         while (_simulatedField.ContainsEmptyCell())
         {
             int column = _simulatedField.GetRandomMove();
@@ -92,46 +93,55 @@ public class Node
             {
                 return _simulatedField.IsPlayersTurn;
             }
+
             _simulatedField.SwitchPlayer();
         }
+
         return true;
     }
 
     public void BackPropagate(bool _playersVictory)
     {
         plays++;
-        if (isPlayersTurn == _playersVictory) wins++;
-        if (parent != null) parent.BackPropagate(_playersVictory);
+
+        if (isPlayersTurn == _playersVictory) 
+            wins++;
+
+        if (parent != null) 
+            parent.BackPropagate(_playersVictory);
     }
 
     public Node SelectBestChild(int _nbSimulation)
     {
-        double maxValue = -1;
+        float maxValue = -1;
+
         Node bestNode = null;
         foreach (Node child in children.Keys)
         {
-            double evaluation = (double)child.wins / (double)child.plays + Math.Sqrt(2 * Math.Log((double)_nbSimulation) / (double)child.plays);
+            float evaluation = child.wins / child.plays + Mathf.Sqrt(2 * Mathf.Log(_nbSimulation) / child.plays);
             if (maxValue < evaluation)
             {
                 maxValue = evaluation;
                 bestNode = child;
             }
         }
+
         return bestNode;
     }
 
     public int MostSelectedMove()
     {
-        double maxValue = -1;
+        float maxValue = -1;
         int bestMove = -1;
-        foreach (var child in children)
+        foreach (KeyValuePair<Node, int> child in children)
         {
-            if ((double)child.Key.wins / (double)child.Key.plays > maxValue)
+            if (child.Key.wins / child.Key.plays > maxValue)
             {
                 bestMove = child.Value;
-                maxValue = (double)child.Key.wins / (double)child.Key.plays;
+                maxValue = child.Key.wins / child.Key.plays;
             }
         }
+
         return bestMove; //returns the best column.
     }
 }
