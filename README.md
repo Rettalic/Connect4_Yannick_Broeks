@@ -9,3 +9,5 @@ This helps it figure out the best moves to make in a game or find good solutions
 
 I learned a lot during this project, such as threading, algorithms and how to call events.
 There are things to improve still, like making the code more loose coupled or optimising it even more.
+
+During the proces of creating this game I tried to create a clear code structure with consistent coding standards. 
