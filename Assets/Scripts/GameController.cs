@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
@@ -14,9 +15,6 @@ public class GameController : MonoBehaviour
 
     [SerializeField] private int numPiecesToWin = 4;
     [SerializeField] private bool allowDiagonalConnection = true;
-
-    [Header("Helper Scripts")]
-    [SerializeField] private UpdateUI UI; 
 
     [Header("AI Interactions")]
     [Range(1, 8)] public int parallelProcesses = 2;
@@ -41,7 +39,8 @@ public class GameController : MonoBehaviour
 
     private bool isDropping = false;
     private bool gameOver = false;
-    private bool isCheckingForWinner = false;
+
+    public static event Action<GameOverState> OnGameOver;
 
     private void Start()
     {
@@ -50,16 +49,6 @@ public class GameController : MonoBehaviour
 
     private void Update()
     {
-        if (isCheckingForWinner) 
-            return;
-
-        if (gameOver)
-        {
-            UI.winningText.SetActive(true);
-            UI.buttonPlayAgain.SetActive(true);
-            return;
-        }
-
         if (field.IsPlayersTurn)
         {
             if (gameObjectTurn == null)
@@ -263,10 +252,7 @@ public class GameController : MonoBehaviour
             piece.transform.parent = gameObjectField.transform;
             Destroy(gameObjectTurn);
 
-            Won();
-
-            while (isCheckingForWinner)
-                yield return null;
+            CheckGameState();
 
             field.SwitchPlayer();
         }
@@ -274,25 +260,21 @@ public class GameController : MonoBehaviour
         yield return 0;
     }
 
-    private void Won()
+    private void CheckGameState()
     {
-        isCheckingForWinner = true;
-
         gameOver = field.CheckForWinner();
 
         if (gameOver)
         {
-            UI.winningText.GetComponent<TextMeshProUGUI>().text = field.IsPlayersTurn ? UI.playerWonText : UI.playerLoseText;
+            OnGameOver?.Invoke(field.IsPlayersTurn ? GameOverState.win : GameOverState.lose);
         }
         else
         {
             if (!field.ContainsEmptyCell())
             {
                 gameOver = true;
-                UI.winningText.GetComponent<TextMeshProUGUI>().text = UI.drawText;
+                OnGameOver?.Invoke(GameOverState.draw);
             }
         }
-
-        isCheckingForWinner = false;
     }
 }
