@@ -1,0 +1,27 @@
+fileFormatVersion: 2
+guid: d9b4a904fc191d9479861812ee4f92bd
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Georgia
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 43e1d7abf3042c64d955954bddb29175, type: 3}
+  - {fileID: 12800000, guid: 76d562837e4c55345a3d2299a416c991, type: 3}
+  - {fileID: 12800000, guid: a637066e344eb614e970c1d193533f4f, type: 3}
+  - {fileID: 12800000, guid: e003f1976f7ffc249801dcbcb3ff98c2, type: 3}
+  - {fileID: 12800000, guid: 307d573c5cd90b24eb11ff47a27b60c9, type: 3}
+  - {fileID: 12800000, guid: 1a3fa4dd68cd6c146b41aa852706d184, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
